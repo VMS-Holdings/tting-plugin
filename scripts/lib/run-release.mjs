@@ -3,7 +3,7 @@ import { join } from 'node:path';
 import { buildAgent } from './build.mjs';
 import { ALL_AGENTS, log, selectAgents } from './cli.mjs';
 import { assertNoIgnoredFiles, isReleased, releaseAgent } from './release.mjs';
-import { releaseBranch, releaseTag, toJson } from './targets.mjs';
+import { isLatestRelease, releaseBranch, releaseTag, toJson } from './targets.mjs';
 
 /** 워크플로가 이 목록을 읽어 GitHub Release 를 만든다. */
 export const RELEASES_FILE = 'releases.json';
@@ -16,12 +16,14 @@ async function writeReleases(outDir, releases) {
 async function releaseOne({ config, agent, skipReleased, repoDir, skillsDir, outDir, remote, push }) {
   const version = config.agents[agent].version;
   // 전부를 고른 경우에는 이미 나간 버전을 건너뛴다. 하나를 지목했으면 releaseAgent 가 거절한다.
+  const latest = isLatestRelease(agent);
   if (skipReleased && (await isReleased({ repoDir, agent, version, remote }))) {
-    return { agent, version, branch: releaseBranch(agent), tag: releaseTag(agent, version), pushed: false, skipped: true };
+    const identity = { agent, version, branch: releaseBranch(agent), tag: releaseTag(agent, version) };
+    return { ...identity, pushed: false, skipped: true, latest };
   }
   const built = await buildAgent({ config, agent, skillsDir, outDir });
   const released = await releaseAgent({ repoDir, agent, version, builtDir: built.dir, remote, push });
-  return { ...released, skipped: false };
+  return { ...released, skipped: false, latest };
 }
 
 function describe(release) {

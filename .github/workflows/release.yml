@@ -98,6 +98,8 @@ jobs:
             version=$(jq -r '.version' <<<"$release")
             tag=$(jq -r '.tag' <<<"$release")
             branch=$(jq -r '.branch' <<<"$release")
+            # "latest" 표시는 Gemini 릴리스만 받는다. Gemini CLI 가 ref 없이 설치할 때 그 릴리스를 받기 때문이다.
+            latest=$(jq -r '.latest' <<<"$release")
             # 404 만 "없다"로 본다. 다른 실패는 사유를 찍고 멈춘다.
             if found=$(gh api "repos/${GITHUB_REPOSITORY}/releases/tags/${tag}" --jq '.html_url' 2>&1 </dev/null); then
               echo "[release] ${tag}: GitHub Release 가 이미 있다 (${found})"
@@ -111,6 +113,7 @@ jobs:
             git archive --format=tar.gz --prefix="${name}/" --output="${name}.tar.gz" "$tag"
             gh release create "$tag" "${name}.tar.gz" \
               --verify-tag \
+              --latest="$latest" \
               --title "${agent} v${version}" \
               --notes "Install instructions: README on the \`${branch}\` branch." </dev/null
             echo "[release] ${tag}: GitHub Release 를 만들었다"

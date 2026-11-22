@@ -15,7 +15,7 @@
   },
   "agents": {
     "claude": { "version": "0.1.0" },
-    "gemini": { "version": "0.1.1" },
+    "gemini": { "version": "0.1.2" },
     "codex": { "version": "0.1.0" },
     "grok": { "version": "0.1.1" }
   }

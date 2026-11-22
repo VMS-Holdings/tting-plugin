@@ -85,6 +85,23 @@ test('전부를 고르면 아직 안 나간 버전만 올리고, 나간 버전�
   assert.equal(await git(origin, 'show', 'release/gemini:skills/using-tting/SKILL.md'), SKILL.trim());
 });
 
+test('목록의 항목마다 최신 GitHub Release 표시를 받을지 적는다', async () => {
+  const { work, skillsDir, outDir } = await createRepo('latest');
+  const config = configWith({ claude: { version: '0.1.0' }, gemini: { version: '0.1.0' } });
+  const options = { config, requested: 'all', repoDir: work, skillsDir, outDir, push: true, report: silent };
+
+  const released = await runRelease(options);
+  const skipped = await runRelease(options);
+
+  const latestOf = (releases) => releases.map(({ agent, latest }) => ({ agent, latest }));
+  const expected = [
+    { agent: 'claude', latest: false },
+    { agent: 'gemini', latest: true },
+  ];
+  assert.deepEqual(latestOf(released), expected);
+  assert.deepEqual(latestOf(skipped), expected);
+});
+
 test('전부 나간 뒤에 다시 돌려도 목록을 쓴다', async () => {
   const { work, skillsDir, outDir } = await createRepo('done');
   const config = configWith({ codex: { version: '0.1.0' } });

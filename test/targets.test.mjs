@@ -2,6 +2,7 @@ import assert from 'node:assert/strict';
 import { test } from 'node:test';
 import { validateConfig } from '../scripts/lib/config.mjs';
 import {
+  isLatestRelease,
   releaseBranch,
   releaseTag,
   rootClaudeMarketplace,
@@ -102,6 +103,20 @@ test('모든 에이전트가 설치 안내 README 를 낸다', () => {
     assert.ok(readme, `${agent} README 가 없다`);
     assert.match(readme.content, new RegExp(`release/${agent}`));
   }
+});
+
+test('gemini: 기본 설치 명령은 ref 없이 최신 GitHub Release 를 받는다', () => {
+  const readme = targetFor('gemini', config).files.find((file) => file.path === 'README.md').content;
+
+  assert.match(readme, /gemini extensions install https:\/\/github\.com\/VMS-Holdings\/tting-plugin --auto-update\n/);
+  assert.match(readme, /GITHUB_TOKEN/);
+});
+
+test('최신 GitHub Release 표시는 gemini 만 받는다', () => {
+  assert.deepEqual(
+    ['claude', 'gemini', 'codex', 'grok'].map((agent) => isLatestRelease(agent)),
+    [false, true, false, false],
+  );
 });
 
 test('gemini 와 grok 의 설치 안내는 SSH 로 받는 명령도 싣는다', () => {

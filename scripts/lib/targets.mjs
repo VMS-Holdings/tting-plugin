@@ -28,6 +28,16 @@ export function releaseTag(agent, version) {
   return `${agent}-v${version}`;
 }
 
+/**
+ * 저장소의 "latest" GitHub Release 표시를 받을 에이전트. Gemini CLI 는 `--ref` 없이 설치하거나 갱신할 때
+ * 그 표시가 붙은 릴리스를 받는다. 다른 에이전트의 릴리스가 그 자리를 차지하면 Gemini 사용자가 남의 묶음을 받는다.
+ */
+const LATEST_RELEASE_AGENT = 'gemini';
+
+export function isLatestRelease(agent) {
+  return agent === LATEST_RELEASE_AGENT;
+}
+
 function versionOf(config, agent) {
   const settings = config.agents[agent];
   if (settings === undefined) {
@@ -145,13 +155,18 @@ function geminiTarget(config) {
     description: config.description,
     mcpServers: { [config.mcp.serverName]: { httpUrl: config.mcp.url } },
   };
-  const options = `--ref ${releaseBranch('gemini')} --auto-update`;
   const install = [
-    ...codeBlock(`gemini extensions install ${repositoryUrl(config)} ${options}`),
+    ...codeBlock(`gemini extensions install ${repositoryUrl(config)} --auto-update`),
     '',
-    SSH_NOTE,
+    'This installs the latest Gemini release of this repository and keeps it updated.',
     '',
-    ...codeBlock(`gemini extensions install ${repositorySshUrl(config)} ${options}`),
+    'While the repository is private, Gemini CLI needs a token to read its releases. Set `GITHUB_TOKEN` to a',
+    'token that can read the repository. Or install from the release branch over SSH, and answer yes when',
+    'Gemini CLI offers to use git clone:',
+    '',
+    ...codeBlock(
+      `gemini extensions install ${repositorySshUrl(config)} --ref ${releaseBranch('gemini')} --auto-update`,
+    ),
   ];
   return {
     skillsDir: 'skills',

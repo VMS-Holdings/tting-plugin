@@ -1,6 +1,6 @@
 {
   "name": "tting",
-  "version": "0.1.1",
+  "version": "0.1.2",
   "description": "Create, run, and inspect tting workflows, agents, and skills from your coding agent.",
   "mcpServers": {
     "tting": {

@@ -31,7 +31,10 @@ defaults:
 jobs:
   # 테스트는 저장소의 코드를 실행한다. 쓰기 권한이 없는 잡에서 돌린다.
   test:
-    runs-on: ubuntu-latest
+    # 조직의 호스티드 러너가 막혀 있는 동안(리포 변수 `HOSTED_RUNNERS=off`)은 셀프 호스트 검사 풀에서 돈다.
+    # 형제 리포(tting, tting-cloud)와 같은 스위치다. 풀과 라벨은 infrastructure 의 github_runner README 에 있다.
+    runs-on: ${{ vars.HOSTED_RUNNERS != 'off' && 'ubuntu-24.04-arm' || fromJSON('["self-hosted","vms-arm64-check"]') }}
+    timeout-minutes: 10
     permissions:
       contents: read
     steps:
@@ -51,7 +54,9 @@ jobs:
 
   release:
     needs: test
-    runs-on: ubuntu-latest
+    # 릴리스는 배포 풀에서 돈다. 같은 에이전트가 두 자리에서 겹쳐 돌지 않는 것은 위의 concurrency 가 맡는다.
+    runs-on: ${{ vars.HOSTED_RUNNERS == 'off' && fromJSON('["self-hosted","vms-arm64-deploy"]') || 'ubuntu-24.04-arm' }}
+    timeout-minutes: 10
     # 이 환경은 main 에서만 쓸 수 있게 저장소 설정에서 묶어 둔다. 승인자를 두려면 환경에 더한다.
     environment: release
     permissions:

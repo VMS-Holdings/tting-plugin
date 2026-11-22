@@ -14,7 +14,10 @@ defaults:
 
 jobs:
   verify:
-    runs-on: ubuntu-latest
+    # 조직의 호스티드 러너가 막혀 있는 동안(리포 변수 `HOSTED_RUNNERS=off`)은 셀프 호스트 검사 풀에서 돈다.
+    # 형제 리포(tting, tting-cloud)와 같은 스위치다. 풀과 라벨은 infrastructure 의 github_runner README 에 있다.
+    runs-on: ${{ vars.HOSTED_RUNNERS != 'off' && 'ubuntu-24.04-arm' || fromJSON('["self-hosted","vms-arm64-check"]') }}
+    timeout-minutes: 10
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
         with:

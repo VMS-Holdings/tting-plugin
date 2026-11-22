@@ -1,0 +1,19 @@
+{
+  "name": "tting",
+  "displayName": "tting",
+  "version": "0.1.0",
+  "description": "Create, run, and inspect tting workflows, agents, and skills from your coding agent.",
+  "author": {
+    "name": "tting",
+    "url": "https://tting.ai"
+  },
+  "homepage": "https://tting.ai",
+  "repository": "https://github.com/VMS-Holdings/tting-plugin",
+  "keywords": [
+    "tting",
+    "workflow",
+    "agent",
+    "skill",
+    "mcp"
+  ]
+}

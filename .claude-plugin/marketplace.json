@@ -1,0 +1,14 @@
+{
+  "name": "tting",
+  "description": "Create, run, and inspect tting workflows, agents, and skills from your coding agent.",
+  "owner": {
+    "name": "tting"
+  },
+  "plugins": [
+    {
+      "name": "tting",
+      "source": "./",
+      "description": "Create, run, and inspect tting workflows, agents, and skills from your coding agent."
+    }
+  ]
+}

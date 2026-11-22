@@ -1,0 +1,22 @@
+{
+  "name": "tting",
+  "displayName": "tting",
+  "description": "Create, run, and inspect tting workflows, agents, and skills from your coding agent.",
+  "author": {
+    "name": "tting",
+    "url": "https://tting.ai"
+  },
+  "homepage": "https://tting.ai",
+  "repository": "VMS-Holdings/tting-plugin",
+  "keywords": ["tting", "workflow", "agent", "skill", "mcp"],
+  "mcp": {
+    "serverName": "tting",
+    "url": "https://mcp.tting.ai/mcp"
+  },
+  "agents": {
+    "claude": { "version": "0.1.0" },
+    "gemini": { "version": "0.1.0" },
+    "codex": { "version": "0.1.0" },
+    "grok": { "version": "0.1.0" }
+  }
+}

@@ -1,0 +1,15 @@
+{
+  "name": "tting-plugin",
+  "private": true,
+  "type": "module",
+  "description": "tting 을 코딩 에이전트(Claude Code, Gemini CLI, Codex, Grok Build)에 붙이는 플러그인의 원본과 에이전트별 릴리스 도구",
+  "engines": {
+    "node": ">=20"
+  },
+  "scripts": {
+    "test": "node --test",
+    "build": "node scripts/build.mjs",
+    "release": "node scripts/release.mjs",
+    "sync:root": "node scripts/sync-root.mjs"
+  }
+}

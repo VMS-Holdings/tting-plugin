@@ -1,7 +1,7 @@
 {
   "name": "tting",
   "displayName": "tting",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "description": "Create, run, and inspect tting workflows, agents, and skills from your coding agent.",
   "author": {
     "name": "tting",

@@ -12,11 +12,13 @@ tting 을 코딩 에이전트에 붙이는 플러그인의 원본이다. 원본 
 | 에이전트 | 릴리스 브랜치 | 형식 | 설치 |
 | --- | --- | --- | --- |
 | Claude Code | `release/claude` | 플러그인. `.claude-plugin/plugin.json`, `.mcp.json`, `skills/` | `claude plugin install tting --marketplace VMS-Holdings/tting-plugin` |
-| Gemini CLI | `release/gemini` | 익스텐션. `gemini-extension.json`, `skills/` | `gemini extensions install https://github.com/VMS-Holdings/tting-plugin --ref release/gemini --auto-update` |
+| Gemini CLI | `release/gemini` | 익스텐션. `gemini-extension.json`, `skills/` | `gemini extensions install git@github.com:VMS-Holdings/tting-plugin.git --ref release/gemini --auto-update` |
 | Codex | `release/codex` | 포터블 플러그인과 마켓 선언. `.agents/plugins/marketplace.json`, `plugins/tting/` | `codex plugin marketplace add VMS-Holdings/tting-plugin@release/codex` |
 | Grok Build | `release/grok` | Claude Code 형식 그대로 | `grok --plugin-dir <받은 폴더>` |
 
 Claude Code 는 기본 브랜치의 `.claude-plugin/marketplace.json` 을 읽는다. 그 선언이 플러그인 본체를 `release/claude` 에서 가져오게 한다.
+
+저장소가 비공개인 동안에는 저장소를 읽을 수 있는 사람만 설치할 수 있다. Gemini CLI 의 HTTPS 주소(`https://github.com/VMS-Holdings/tting-plugin`)는 git 에 HTTPS 자격 증명이 있을 때만 받아진다. SSH 만 쓰면 표의 SSH 주소를 쓴다.
 
 ### 형식의 근거와 확인 상태
 

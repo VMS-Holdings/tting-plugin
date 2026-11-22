@@ -1,6 +1,9 @@
 // 에이전트마다 릴리스 브랜치에 놓일 파일을 만든다. 형식의 근거는 README 의 「에이전트별 형식」 표에 있다.
 
 const GITHUB = 'https://github.com';
+const GITHUB_SSH = 'git@github.com:';
+// 저장소가 비공개인 동안 HTTPS 주소는 자격 증명 도우미가 있어야 받아진다. SSH 만 쓰는 사람을 위해 함께 싣는다.
+const SSH_NOTE = 'If you reach GitHub over SSH, use the SSH address instead:';
 const PORTABLE_PLUGIN_SCHEMA = 'https://agent-plugins.org/schemas/1.0.0/plugin.schema.json';
 const PORTABLE_MCP_SCHEMA = 'https://agent-plugins.org/schemas/1.0.0/mcp.schema.json';
 const CODEX_CATEGORY = 'Productivity';
@@ -35,6 +38,14 @@ function versionOf(config, agent) {
 
 function repositoryUrl(config) {
   return `${GITHUB}/${config.repository}`;
+}
+
+function repositorySshUrl(config) {
+  return `${GITHUB_SSH}${config.repository}.git`;
+}
+
+function codeBlock(...commands) {
+  return ['```bash', ...commands, '```'];
 }
 
 /** 값이 없는 칸은 키째 뺀다. 빈 칸을 내보내면 검증기가 경고한다. */
@@ -86,11 +97,7 @@ function claudeFormatFiles(config, version) {
 
 function claudeTarget(config) {
   const version = versionOf(config, 'claude');
-  const install = [
-    '```bash',
-    `claude plugin install ${config.name} --marketplace ${config.repository}`,
-    '```',
-  ];
+  const install = codeBlock(`claude plugin install ${config.name} --marketplace ${config.repository}`);
   return {
     skillsDir: 'skills',
     files: [
@@ -109,13 +116,16 @@ function grokTarget(config) {
     owner: { name: config.author.name },
     plugins: [{ name: config.name, source: MARKETPLACE_ROOT_SOURCE, description: config.description }],
   };
+  const branch = releaseBranch('grok');
+  const folder = `${config.name}-grok`;
   const install = [
     'Grok Build reads Claude Code plugins. Download this branch and point Grok at it:',
     '',
-    '```bash',
-    `git clone --branch ${releaseBranch('grok')} ${repositoryUrl(config)}.git ${config.name}-grok`,
-    `grok --plugin-dir ./${config.name}-grok`,
-    '```',
+    ...codeBlock(`git clone --branch ${branch} ${repositoryUrl(config)}.git ${folder}`, `grok --plugin-dir ./${folder}`),
+    '',
+    SSH_NOTE,
+    '',
+    ...codeBlock(`git clone --branch ${branch} ${repositorySshUrl(config)} ${folder}`),
   ];
   return {
     skillsDir: 'skills',
@@ -135,10 +145,13 @@ function geminiTarget(config) {
     description: config.description,
     mcpServers: { [config.mcp.serverName]: { httpUrl: config.mcp.url } },
   };
+  const options = `--ref ${releaseBranch('gemini')} --auto-update`;
   const install = [
-    '```bash',
-    `gemini extensions install ${repositoryUrl(config)} --ref ${releaseBranch('gemini')} --auto-update`,
-    '```',
+    ...codeBlock(`gemini extensions install ${repositoryUrl(config)} ${options}`),
+    '',
+    SSH_NOTE,
+    '',
+    ...codeBlock(`gemini extensions install ${repositorySshUrl(config)} ${options}`),
   ];
   return {
     skillsDir: 'skills',
@@ -168,9 +181,7 @@ function codexTarget(config) {
     mcpServers: { [config.mcp.serverName]: { type: 'streamable-http', url: config.mcp.url } },
   };
   const install = [
-    '```bash',
-    `codex plugin marketplace add ${config.repository}@${releaseBranch('codex')}`,
-    '```',
+    ...codeBlock(`codex plugin marketplace add ${config.repository}@${releaseBranch('codex')}`),
     '',
     `Then open \`/plugins\` in Codex and install \`${config.name}\`.`,
   ];

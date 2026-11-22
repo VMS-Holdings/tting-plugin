@@ -104,6 +104,19 @@ test('모든 에이전트가 설치 안내 README 를 낸다', () => {
   }
 });
 
+test('gemini 와 grok 의 설치 안내는 SSH 로 받는 명령도 싣는다', () => {
+  const readmeOf = (agent) => targetFor(agent, config).files.find((file) => file.path === 'README.md').content;
+
+  assert.ok(
+    readmeOf('gemini').includes(
+      'gemini extensions install git@github.com:VMS-Holdings/tting-plugin.git --ref release/gemini --auto-update',
+    ),
+  );
+  assert.ok(
+    readmeOf('grok').includes('git clone --branch release/grok git@github.com:VMS-Holdings/tting-plugin.git tting-grok'),
+  );
+});
+
 test('파일 내용은 줄바꿈으로 끝난다', () => {
   for (const file of targetFor('claude', config).files) {
     assert.ok(file.content.endsWith('\n'), file.path);

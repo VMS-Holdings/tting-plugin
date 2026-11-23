@@ -2,7 +2,7 @@
   "$schema": "https://agent-plugins.org/schemas/1.0.0/plugin.schema.json",
   "name": "tting",
   "displayName": "tting",
-  "version": "0.1.0",
+  "version": "26.11.23.0",
   "description": "Create, run, and inspect tting workflows, agents, and skills from your coding agent.",
   "author": {
     "name": "tting",

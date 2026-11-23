@@ -39,12 +39,12 @@ Claude Code 는 기본 브랜치의 `.claude-plugin/marketplace.json` 을 읽는
 
 ### 형식의 근거와 확인 상태
 
-| 에이전트 | 근거 | 확인 (2026-11-22) |
+| 에이전트 | 근거 | 확인 (2026-11-23, `v26.11.23.0`) |
 | --- | --- | --- |
-| Claude Code | [Plugin manifest reference](https://code.claude.com/docs/en/plugins-reference), [Create a marketplace](https://code.claude.com/docs/en/plugin-marketplaces) | `claude plugin validate --strict` 통과 (2.1.311). 표의 명령으로 비공개 저장소에서 설치했다. 플러그인의 MCP 서버가 로그인 대기 상태로 잡힌다 |
-| Gemini CLI | [Extension reference](https://geminicli.com/docs/extensions/reference), [MCP servers](https://geminicli.com/docs/tools/mcp-server/) | `gemini extensions validate` 통과 (0.26.0). 표의 명령으로 최신 Gemini 릴리스를 받았다(`GITHUB_TOKEN` 을 줬다). SSH 와 릴리스 브랜치로도 설치했다 |
+| Claude Code | [Plugin manifest reference](https://code.claude.com/docs/en/plugins-reference), [Create a marketplace](https://code.claude.com/docs/en/plugin-marketplaces) | `claude plugin validate --strict` 통과 (2.1.311). 표의 명령으로 비공개 저장소에서 설치했고 버전이 `26.11.23.0` 으로 잡힌다. 플러그인의 MCP 서버가 로그인 대기 상태로 잡힌다 |
+| Gemini CLI | [Extension reference](https://geminicli.com/docs/extensions/reference), [MCP servers](https://geminicli.com/docs/tools/mcp-server/) | `gemini extensions validate` 통과 (0.26.0). 버전이 표준 semver 가 아니라는 경고가 나온다. 표의 명령으로 `v26.11.23.0` 릴리스의 `darwin.` 묶음을 받았다(`GITHUB_TOKEN` 을 줬다) |
 | Codex | [Build plugins](https://developers.openai.com/codex/plugins/build) | 문서만 따랐다. Codex 로 설치해 보지 못했다 |
-| Grok Build | [Skills, Plugins, Marketplaces](https://docs.x.ai/build/features/skills-plugins-marketplaces). Claude Code 의 플러그인을 그대로 읽는다고 적혀 있다 | Claude 검증기는 통과. Grok 으로 설치해 보지 못했다 |
+| Grok Build | [Skills, Plugins, Marketplaces](https://docs.x.ai/build/features/skills-plugins-marketplaces). Claude Code 의 플러그인을 그대로 읽는다고 적혀 있다 | 릴리스의 Grok 묶음을 받아 풀었고 Claude 검증기를 통과한다. `release/grok` 브랜치와 내용이 같다. Grok 으로 설치해 보지 못했다 |
 
 ## 구조
 

@@ -1,17 +1,13 @@
-import { execFile } from 'node:child_process';
-import { mkdtemp, readdir, rm } from 'node:fs/promises';
-import { tmpdir } from 'node:os';
-import { basename, isAbsolute, join, relative } from 'node:path';
-import { promisify } from 'node:util';
+import { readdir } from 'node:fs/promises';
+import { basename, isAbsolute, relative } from 'node:path';
 import { IGNORED_FILES } from './build.mjs';
+import { git, writeTree } from './git.mjs';
 import { releaseBranch, releaseTag } from './targets.mjs';
 
-const run = promisify(execFile);
 const DEFAULT_REMOTE = 'origin';
-/** 릴리스의 원본이 되는 브랜치. 검토를 거친 커밋만 나가게 하려고 이 브랜치의 끝에서만 올린다. */
 const SOURCE_BRANCH = 'main';
-const PARENT_DIR = '..';
 const OPTION_PREFIX = '-';
+const PARENT_DIR = '..';
 const LS_REMOTE_SEPARATOR = '\t';
 
 export class ReleaseError extends Error {
@@ -21,11 +17,6 @@ export class ReleaseError extends Error {
   }
 }
 
-async function git(cwd, args, env = {}) {
-  const { stdout } = await run('git', args, { cwd, env: { ...process.env, ...env } });
-  return stdout.trim();
-}
-
 /** 원격 이름은 git 명령의 인자로 그대로 들어간다. `-` 로 시작하면 git 이 옵션으로 읽는다. */
 function assertRemote(remote) {
   if (typeof remote !== 'string' || remote === '' || remote.startsWith(OPTION_PREFIX)) {
@@ -33,10 +24,7 @@ function assertRemote(remote) {
   }
 }
 
-/**
- * 원격에서 그 이름의 ref 가 가리키는 커밋을 찾는다. `ls-remote` 는 이름의 끝이 같은 ref 도 함께
- * 돌려주므로, 이름이 정확히 같은 줄만 고른다.
- */
+// `ls-remote` 는 이름의 끝만 같은 ref 도 돌려준다. 이름이 정확히 같은 줄만 고른다.
 async function remoteSha(repoDir, remote, ref) {
   assertRemote(remote);
   const output = await git(repoDir, ['ls-remote', remote, ref]);
@@ -47,11 +35,6 @@ async function remoteSha(repoDir, remote, ref) {
   return match?.[0];
 }
 
-export async function isReleased({ repoDir, agent, version, remote = DEFAULT_REMOTE }) {
-  return (await remoteSha(repoDir, remote, `refs/tags/${releaseTag(agent, version)}`)) !== undefined;
-}
-
-/** 지난 릴리스 위에 쌓으려고 그 커밋을 받아 온다. 첫 릴리스면 부모가 없다. */
 async function fetchParent(repoDir, remote, branch) {
   const ref = `refs/heads/${branch}`;
   const sha = await remoteSha(repoDir, remote, ref);
@@ -60,7 +43,6 @@ async function fetchParent(repoDir, remote, branch) {
   return sha;
 }
 
-/** 릴리스가 어느 원본에서 나왔는지 남기려고 지금 체크아웃한 커밋을 읽는다. */
 async function sourceCommit(repoDir) {
   try {
     return await git(repoDir, ['rev-parse', '--verify', 'HEAD']);
@@ -77,7 +59,6 @@ async function assertCleanTree(repoDir) {
   }
 }
 
-/** 원격 원본 브랜치의 끝이 아닌 커밋(올리지 않은 작업 브랜치, 뒤처진 main)에서는 올리지 않는다. */
 async function assertSourceIsRemoteHead(repoDir, remote, source) {
   const head = await remoteSha(repoDir, remote, `refs/heads/${SOURCE_BRANCH}`);
   if (head !== source) {
@@ -87,10 +68,7 @@ async function assertSourceIsRemoteHead(repoDir, remote, source) {
   }
 }
 
-/**
- * 짓기는 작업 트리를 읽는다. git 이 무시하는 파일은 `git status` 에 보이지 않아 깨끗한 트리 검사를
- * 지나가므로, 원본 폴더에 그런 파일이 있는지 따로 본다.
- */
+// git 이 무시하는 파일은 `git status` 에 안 보여 깨끗한 트리 검사를 지나가지만, 짓기는 그 파일도 읽는다.
 export async function assertNoIgnoredFiles(repoDir, sourceDir) {
   const path = relative(repoDir, sourceDir);
   if (path === '' || path.startsWith(PARENT_DIR) || isAbsolute(path)) {
@@ -103,58 +81,75 @@ export async function assertNoIgnoredFiles(repoDir, sourceDir) {
   }
 }
 
-/**
- * 산출물 디렉터리를 트리 객체로 만든다. 임시 인덱스를 써서 작업 중인 브랜치와 작업 트리, 인덱스를
- * 건드리지 않는다. `--force` 는 개인 전역 ignore 가 산출물을 빼지 못하게 하려는 것이다.
- */
-async function writeTree(repoDir, builtDir) {
-  const gitDir = await git(repoDir, ['rev-parse', '--absolute-git-dir']);
-  const scratch = await mkdtemp(join(tmpdir(), 'tting-plugin-index-'));
-  const env = { GIT_DIR: gitDir, GIT_WORK_TREE: builtDir, GIT_INDEX_FILE: join(scratch, 'index') };
-  try {
-    await git(builtDir, ['add', '--all', '--force', '.'], env);
-    return await git(builtDir, ['write-tree'], env);
-  } finally {
-    await rm(scratch, { recursive: true, force: true });
+function releaseSubject(agent, version) {
+  return `release: ${agent} v${version}`;
+}
+
+function sourceLine(source) {
+  return `Source: ${source}`;
+}
+
+// 태그만 손으로 먼저 달린 경우를 거른다. 그대로 건너뛰면 브랜치는 옛 내용인 채 버전만 써 버린다.
+async function assertBranchesReleased({ repoDir, builds, version, source, remote }) {
+  for (const { agent } of builds) {
+    const branch = releaseBranch(agent);
+    const head = await fetchParent(repoDir, remote, branch);
+    const grep = ['--fixed-strings', `--grep=${sourceLine(source)}`, '--format=%s'];
+    const subjects = head === undefined ? '' : await git(repoDir, ['log', ...grep, head]);
+    if (!subjects.split('\n').includes(releaseSubject(agent, version))) {
+      throw new ReleaseError(`${releaseTag(version)} 태그는 있는데 ${branch} 에 이 릴리스가 없다. 태그를 누가 달았는지 확인한다`);
+    }
   }
 }
 
-/**
- * 산출물을 그 에이전트의 릴리스 브랜치에 커밋 하나로 쌓고 버전 태그를 단다.
- * `push` 가 꺼져 있으면 커밋 객체만 만들고 원격에는 아무것도 올리지 않는다.
- */
-export async function releaseAgent({ repoDir, agent, version, builtDir, remote = DEFAULT_REMOTE, push = false }) {
-  const branch = releaseBranch(agent);
-  const tag = releaseTag(agent, version);
-
-  if ((await readdir(builtDir)).length === 0) {
-    throw new ReleaseError(`${agent}: 산출물이 비어 있다 (${builtDir})`);
+async function commitBuild({ repoDir, build, version, source, remote }) {
+  if ((await readdir(build.dir)).length === 0) {
+    throw new ReleaseError(`${build.agent}: 산출물이 비어 있다 (${build.dir})`);
   }
-  if (await isReleased({ repoDir, agent, version, remote })) {
+  const branch = releaseBranch(build.agent);
+  const parent = await fetchParent(repoDir, remote, branch);
+  const tree = await writeTree(repoDir, build.dir);
+  const parentArgs = parent === undefined ? [] : ['-p', parent];
+  const messageArgs = ['-m', releaseSubject(build.agent, version), '-m', sourceLine(source)];
+  const commit = await git(repoDir, ['commit-tree', tree, ...parentArgs, ...messageArgs]);
+  return { agent: build.agent, branch, commit };
+}
+
+async function commitBuilds(options) {
+  // 얕은 클론에서 fetch 를 겹쳐 돌리면 shallow 잠금이 부딪힌다. 하나씩 한다.
+  let agents = [];
+  for (const build of options.builds) {
+    agents = [...agents, await commitBuild({ ...options, build })];
+  }
+  return agents;
+}
+
+export async function publishRelease({ repoDir, version, builds, remote = DEFAULT_REMOTE, push = false }) {
+  const tag = releaseTag(version);
+  const source = await sourceCommit(repoDir);
+  const released = await remoteSha(repoDir, remote, `refs/tags/${tag}`);
+  const identity = { version, tag, source };
+
+  // 같은 실행을 다시 돌린 경우다. 올리지 않고 넘겨서 뒤 단계가 빠진 것을 채우게 한다.
+  if (released === source) {
+    await assertBranchesReleased({ repoDir, builds, version, source, remote });
+    return { ...identity, pushed: false, skipped: true, agents: [] };
+  }
+  if (released !== undefined) {
     throw new ReleaseError(
-      `${tag} 는 이미 릴리스됐다. plugin.config.json 의 agents.${agent}.version 을 올린다`,
+      `${tag} 는 이미 다른 커밋(${released})에서 릴리스됐다. 새로 내려면 plugin.config.json 의 version 을 올린다. ` +
+        'GitHub Release 만 빠졌다면 태그를 올린 실행을 다시 돌린다(Re-run)',
     );
   }
-  const source = await sourceCommit(repoDir);
   if (push) {
     await assertCleanTree(repoDir);
     await assertSourceIsRemoteHead(repoDir, remote, source);
   }
 
-  const parent = await fetchParent(repoDir, remote, branch);
-  const tree = await writeTree(repoDir, builtDir);
-  const parentArgs = parent === undefined ? [] : ['-p', parent];
-  const messageArgs = ['-m', `release: ${agent} v${version}`, '-m', `Source: ${source}`];
-  const commit = await git(repoDir, ['commit-tree', tree, ...parentArgs, ...messageArgs]);
-
+  const agents = await commitBuilds({ repoDir, builds, version, source, remote });
   if (push) {
-    await git(repoDir, [
-      'push',
-      '--atomic',
-      remote,
-      `${commit}:refs/heads/${branch}`,
-      `${commit}:refs/tags/${tag}`,
-    ]);
+    const branches = agents.map(({ branch, commit }) => `${commit}:refs/heads/${branch}`);
+    await git(repoDir, ['push', '--atomic', remote, ...branches, `${source}:refs/tags/${tag}`]);
   }
-  return { agent, version, branch, tag, commit, source, pushed: push };
+  return { ...identity, pushed: push, skipped: false, agents };
 }

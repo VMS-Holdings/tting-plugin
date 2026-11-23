@@ -9,14 +9,10 @@
   "homepage": "https://tting.ai",
   "repository": "VMS-Holdings/tting-plugin",
   "keywords": ["tting", "workflow", "agent", "skill", "mcp"],
+  "version": "26.11.23.0",
   "mcp": {
     "serverName": "tting",
     "url": "https://mcp.tting.ai/mcp"
   },
-  "agents": {
-    "claude": { "version": "0.1.0" },
-    "gemini": { "version": "0.1.2" },
-    "codex": { "version": "0.1.0" },
-    "grok": { "version": "0.1.1" }
-  }
+  "agents": ["claude", "gemini", "codex", "grok"]
 }

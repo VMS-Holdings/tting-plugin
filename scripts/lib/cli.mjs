@@ -11,7 +11,7 @@ export function log(action, target, message) {
 
 /** `--agent` 값을 설정에 있는 에이전트 목록으로 푼다. */
 export function selectAgents(requested, config) {
-  const configured = AGENTS.filter((agent) => config.agents[agent] !== undefined);
+  const configured = AGENTS.filter((agent) => config.agents.includes(agent));
   if (requested === ALL_AGENTS) return configured;
   if (!configured.includes(requested)) {
     throw new Error(`--agent 는 ${[...configured, ALL_AGENTS].join(', ')} 중 하나여야 한다 (받은 값: ${requested})`);

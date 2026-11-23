@@ -4,7 +4,8 @@ import { readFile } from 'node:fs/promises';
 export const AGENTS = Object.freeze(['claude', 'gemini', 'codex', 'grok']);
 
 const KEBAB_CASE = /^[a-z0-9]+(-[a-z0-9]+)*$/;
-const SEMVER = /^\d+\.\d+\.\d+$/;
+const RELEASE_VERSION = /^(\d{2})\.(\d{2})\.(\d{2})\.(0|[1-9]\d*)$/;
+const CENTURY = 2000;
 // GitHub 의 owner/repo. 각 칸이 `-` 나 `.` 로 시작하면 명령의 옵션이나 상위 경로로 읽힐 수 있어 막는다.
 const REPOSITORY_SLUG = /^[A-Za-z0-9][A-Za-z0-9-]*\/[A-Za-z0-9_][\w.-]*$/;
 const CONTROL_CHARACTER = /[\u0000-\u001f\u007f]/;
@@ -30,6 +31,14 @@ function isSingleLine(value) {
   return isNonEmptyString(value) && !CONTROL_CHARACTER.test(value);
 }
 
+function isReleaseVersion(value) {
+  const match = typeof value === 'string' ? RELEASE_VERSION.exec(value) : null;
+  if (match === null) return false;
+  const [year, month, day] = match.slice(1, 4).map(Number);
+  const date = new Date(Date.UTC(CENTURY + year, month - 1, day));
+  return date.getUTCMonth() === month - 1 && date.getUTCDate() === day;
+}
+
 function isHttpsUrl(value) {
   if (!isNonEmptyString(value)) return false;
   try {
@@ -45,6 +54,7 @@ function metadataProblems(raw) {
     problems.push('name: kebab-case 여야 한다');
   }
   if (!isSingleLine(raw.description)) problems.push('description: 비어 있지 않은 한 줄이어야 한다');
+  if (!isReleaseVersion(raw.version)) problems.push('version: yy.mm.dd.n 모양의 날짜여야 한다 (예: 26.11.23.0)');
   if (!isObject(raw.author) || !isSingleLine(raw.author.name)) {
     problems.push('author.name: 비어 있지 않은 한 줄이어야 한다');
   }
@@ -77,16 +87,15 @@ function mcpProblems(mcp) {
 }
 
 function agentProblems(agents) {
-  if (!isObject(agents) || Object.keys(agents).length === 0) {
-    return ['agents: 에이전트가 하나 이상 있어야 한다'];
+  if (!Array.isArray(agents) || agents.length === 0) {
+    return ['agents: 에이전트가 하나 이상 있는 배열이어야 한다'];
   }
-  return Object.entries(agents).flatMap(([agent, settings]) => {
-    if (!AGENTS.includes(agent)) return [`agents.${agent}: 지원하지 않는 에이전트다 (${AGENTS.join(', ')})`];
-    if (!isObject(settings) || typeof settings.version !== 'string' || !SEMVER.test(settings.version)) {
-      return [`agents.${agent}.version: 1.2.3 모양이어야 한다`];
-    }
-    return [];
-  });
+  const unknown = agents.filter((agent) => !AGENTS.includes(agent));
+  const repeated = agents.filter((agent, index) => agents.indexOf(agent) !== index);
+  return [
+    ...unknown.map((agent) => `agents: 지원하지 않는 에이전트다: ${agent} (${AGENTS.join(', ')})`),
+    ...repeated.map((agent) => `agents: ${agent} 가 두 번 있다`),
+  ];
 }
 
 function deepFreeze(value) {

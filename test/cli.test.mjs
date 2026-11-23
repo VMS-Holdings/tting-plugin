@@ -19,7 +19,8 @@ const config = validateConfig({
   author: { name: 'tting' },
   repository: 'VMS-Holdings/tting-plugin',
   mcp: { serverName: 'tting', url: 'https://mcp.tting.ai/mcp' },
-  agents: { grok: { version: '0.1.0' }, claude: { version: '0.1.0' } },
+  version: '26.11.23.0',
+  agents: ['grok', 'claude'],
 });
 
 let outDir;
@@ -60,9 +61,9 @@ test('짓기 명령은 모르는 에이전트를 받으면 사유를 찍고 실�
   );
 });
 
-test('릴리스 명령은 에이전트를 고르지 않으면 사유를 찍고 실패한다', async () => {
+test('릴리스 명령은 모르는 옵션을 받으면 사유를 찍고 실패한다', async () => {
   await assert.rejects(
-    run('node', [RELEASE_CLI]),
+    run('node', [RELEASE_CLI, '--agent', 'claude']),
     (error) => error.code === 1 && /--agent/.test(error.stderr),
   );
 });

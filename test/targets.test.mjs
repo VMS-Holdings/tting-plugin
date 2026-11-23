@@ -2,14 +2,15 @@ import assert from 'node:assert/strict';
 import { test } from 'node:test';
 import { validateConfig } from '../scripts/lib/config.mjs';
 import {
-  isLatestRelease,
+  assetNames,
   releaseBranch,
+  releaseNotes,
   releaseTag,
   rootClaudeMarketplace,
   targetFor,
 } from '../scripts/lib/targets.mjs';
 
-const config = validateConfig({
+const RAW = {
   name: 'tting',
   displayName: 'tting',
   description: 'Create and run tting workflows.',
@@ -17,14 +18,11 @@ const config = validateConfig({
   homepage: 'https://tting.ai',
   repository: 'VMS-Holdings/tting-plugin',
   keywords: ['tting', 'mcp'],
+  version: '26.11.23.0',
   mcp: { serverName: 'tting', url: 'https://mcp.tting.ai/mcp' },
-  agents: {
-    claude: { version: '0.1.0' },
-    gemini: { version: '0.2.0' },
-    codex: { version: '0.3.0' },
-    grok: { version: '0.4.0' },
-  },
-});
+  agents: ['claude', 'gemini', 'codex', 'grok'],
+};
+const config = validateConfig(RAW);
 
 function jsonOf(target, path) {
   const file = target.files.find((candidate) => candidate.path === path);
@@ -32,15 +30,17 @@ function jsonOf(target, path) {
   return JSON.parse(file.content);
 }
 
-test('릴리스 브랜치와 태그 이름은 에이전트마다 다르다', () => {
+function readmeOf(agent) {
+  return targetFor(agent, config).files.find((file) => file.path === 'README.md').content;
+}
+
+test('릴리스 태그는 버전 하나에서 나오고, 브랜치는 에이전트마다 다르다', () => {
+  assert.equal(releaseTag('26.11.23.0'), 'v26.11.23.0');
   assert.equal(releaseBranch('gemini'), 'release/gemini');
-  assert.equal(releaseTag('gemini', '0.2.0'), 'gemini-v0.2.0');
 });
 
 test('claude: 설치 안내는 마켓을 한 번에 더하고 설치하는 명령을 싣는다', () => {
-  const readme = targetFor('claude', config).files.find((file) => file.path === 'README.md');
-
-  assert.match(readme.content, /claude plugin install tting --marketplace VMS-Holdings\/tting-plugin/);
+  assert.match(readmeOf('claude'), /claude plugin install tting --marketplace VMS-Holdings\/tting-plugin/);
 });
 
 test('claude: 플러그인 선언과 원격 MCP 서버를 낸다', () => {
@@ -48,7 +48,7 @@ test('claude: 플러그인 선언과 원격 MCP 서버를 낸다', () => {
 
   const manifest = jsonOf(target, '.claude-plugin/plugin.json');
   assert.equal(manifest.name, 'tting');
-  assert.equal(manifest.version, '0.1.0');
+  assert.equal(manifest.version, '26.11.23.0');
   assert.equal(manifest.repository, 'https://github.com/VMS-Holdings/tting-plugin');
   assert.deepEqual(jsonOf(target, '.mcp.json'), {
     mcpServers: { tting: { type: 'http', url: 'https://mcp.tting.ai/mcp' } },
@@ -63,7 +63,7 @@ test('claude: 플러그인 선언과 원격 MCP 서버를 낸다', () => {
 test('grok: Claude Code 형식에 자기 마켓 선언을 더한다', () => {
   const target = targetFor('grok', config);
 
-  assert.equal(jsonOf(target, '.claude-plugin/plugin.json').version, '0.4.0');
+  assert.equal(jsonOf(target, '.claude-plugin/plugin.json').version, '26.11.23.0');
   const marketplace = jsonOf(target, '.claude-plugin/marketplace.json');
   assert.equal(marketplace.description, 'Create and run tting workflows.');
   assert.equal(marketplace.plugins[0].name, 'tting');
@@ -76,7 +76,7 @@ test('gemini: 익스텐션 선언에 스트리밍 HTTP 주소를 싣는다', () 
 
   assert.deepEqual(jsonOf(target, 'gemini-extension.json'), {
     name: 'tting',
-    version: '0.2.0',
+    version: '26.11.23.0',
     description: 'Create and run tting workflows.',
     mcpServers: { tting: { httpUrl: 'https://mcp.tting.ai/mcp' } },
   });
@@ -89,39 +89,30 @@ test('codex: 마켓 선언과 포터블 플러그인을 낸다', () => {
   const marketplace = jsonOf(target, '.agents/plugins/marketplace.json');
   assert.deepEqual(marketplace.plugins[0].source, { source: 'local', path: './plugins/tting' });
   assert.equal(marketplace.plugins[0].policy.installation, 'AVAILABLE');
-  assert.equal(jsonOf(target, 'plugins/tting/plugin.json').version, '0.3.0');
+  assert.equal(jsonOf(target, 'plugins/tting/plugin.json').version, '26.11.23.0');
   assert.deepEqual(jsonOf(target, 'plugins/tting/mcp.json').mcpServers, {
     tting: { type: 'streamable-http', url: 'https://mcp.tting.ai/mcp' },
   });
   assert.equal(target.skillsDir, 'plugins/tting/skills');
 });
 
-test('모든 에이전트가 설치 안내 README 를 낸다', () => {
-  for (const agent of ['claude', 'gemini', 'codex', 'grok']) {
-    const readme = targetFor(agent, config).files.find((file) => file.path === 'README.md');
+test('모든 에이전트가 자기 릴리스 브랜치와 버전을 적은 README 를 낸다', () => {
+  for (const agent of config.agents) {
+    const readme = readmeOf(agent);
 
-    assert.ok(readme, `${agent} README 가 없다`);
-    assert.match(readme.content, new RegExp(`release/${agent}`));
+    assert.match(readme, new RegExp(`release/${agent}`));
+    assert.match(readme, /Version 26\.11\.23\.0\./);
   }
 });
 
 test('gemini: 기본 설치 명령은 ref 없이 최신 GitHub Release 를 받는다', () => {
-  const readme = targetFor('gemini', config).files.find((file) => file.path === 'README.md').content;
+  const readme = readmeOf('gemini');
 
   assert.match(readme, /gemini extensions install https:\/\/github\.com\/VMS-Holdings\/tting-plugin --auto-update\n/);
   assert.match(readme, /GITHUB_TOKEN/);
 });
 
-test('최신 GitHub Release 표시는 gemini 만 받는다', () => {
-  assert.deepEqual(
-    ['claude', 'gemini', 'codex', 'grok'].map((agent) => isLatestRelease(agent)),
-    [false, true, false, false],
-  );
-});
-
 test('gemini 와 grok 의 설치 안내는 SSH 로 받는 명령도 싣는다', () => {
-  const readmeOf = (agent) => targetFor(agent, config).files.find((file) => file.path === 'README.md').content;
-
   assert.ok(
     readmeOf('gemini').includes(
       'gemini extensions install git@github.com:VMS-Holdings/tting-plugin.git --ref release/gemini --auto-update',
@@ -132,6 +123,40 @@ test('gemini 와 grok 의 설치 안내는 SSH 로 받는 명령도 싣는다', 
   );
 });
 
+test('gemini 의 묶음은 Gemini CLI 가 고르도록 플랫폼 이름을 앞에 단다', () => {
+  assert.deepEqual(assetNames('gemini', '26.11.23.0'), [
+    'darwin.tting-plugin-gemini-26.11.23.0.tar.gz',
+    'linux.tting-plugin-gemini-26.11.23.0.tar.gz',
+    'win32.tting-plugin-gemini-26.11.23.0.tar.gz',
+  ]);
+});
+
+test('나머지 에이전트의 묶음은 하나다', () => {
+  for (const agent of ['claude', 'codex', 'grok']) {
+    assert.deepEqual(assetNames(agent, '26.11.23.0'), [`tting-plugin-${agent}-26.11.23.0.tar.gz`]);
+  }
+});
+
+test('릴리스 노트는 에이전트마다 받아 가는 법과 묶음 이름을 적는다', () => {
+  const notes = releaseNotes(config);
+
+  assert.match(notes, /v26\.11\.23\.0/);
+  for (const title of ['## Claude Code', '## Gemini CLI', '## Codex', '## Grok Build']) {
+    assert.ok(notes.includes(title), title);
+  }
+  assert.ok(notes.includes('claude plugin install tting --marketplace VMS-Holdings/tting-plugin'));
+  assert.ok(notes.includes('gemini extensions install https://github.com/VMS-Holdings/tting-plugin --auto-update'));
+  assert.ok(notes.includes('tting-plugin-grok-26.11.23.0.tar.gz'));
+  assert.ok(notes.includes('darwin.tting-plugin-gemini-26.11.23.0.tar.gz'));
+});
+
+test('릴리스 노트는 설정에 있는 에이전트만 적는다', () => {
+  const notes = releaseNotes(validateConfig({ ...RAW, agents: ['claude'] }));
+
+  assert.ok(notes.includes('## Claude Code'));
+  assert.equal(notes.includes('## Gemini CLI'), false);
+});
+
 test('파일 내용은 줄바꿈으로 끝난다', () => {
   for (const file of targetFor('claude', config).files) {
     assert.ok(file.content.endsWith('\n'), file.path);
@@ -139,7 +164,7 @@ test('파일 내용은 줄바꿈으로 끝난다', () => {
 });
 
 test('설정에 없는 에이전트는 만들 수 없다', () => {
-  const partial = validateConfig({ ...config, agents: { claude: { version: '0.1.0' } } });
+  const partial = validateConfig({ ...RAW, agents: ['claude'] });
 
   assert.throws(() => targetFor('gemini', partial), /gemini/);
 });

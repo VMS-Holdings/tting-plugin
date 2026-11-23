@@ -10,8 +10,9 @@ const VALID = {
   homepage: 'https://tting.ai',
   repository: 'VMS-Holdings/tting-plugin',
   keywords: ['tting'],
+  version: '26.11.23.0',
   mcp: { serverName: 'tting', url: 'https://mcp.tting.ai/mcp' },
-  agents: { claude: { version: '0.1.0' }, gemini: { version: '1.2.3' } },
+  agents: ['claude', 'gemini'],
 };
 
 function withChange(change) {
@@ -26,9 +27,10 @@ test('올바른 설정은 그대로 돌려주고 고칠 수 없게 얼린다', (
   const config = validateConfig(VALID);
 
   assert.equal(config.name, 'tting');
-  assert.equal(config.agents.gemini.version, '1.2.3');
+  assert.equal(config.version, '26.11.23.0');
+  assert.deepEqual([...config.agents], ['claude', 'gemini']);
   assert.ok(Object.isFrozen(config));
-  assert.ok(Object.isFrozen(config.agents.claude));
+  assert.ok(Object.isFrozen(config.agents));
 });
 
 test('이름이 kebab-case 가 아니면 거절한다', () => {
@@ -42,27 +44,29 @@ test('MCP 주소가 https 가 아니면 거절한다', () => {
 });
 
 test('모르는 에이전트가 있으면 거절한다', () => {
-  const change = { agents: { cursor: { version: '0.1.0' } } };
-
-  assert.throws(() => validateConfig(withChange(change)), /cursor/);
+  assert.throws(() => validateConfig(withChange({ agents: ['claude', 'cursor'] })), /cursor/);
 });
 
-test('에이전트가 하나도 없으면 거절한다', () => {
-  assert.throws(() => validateConfig(withChange({ agents: {} })), /agents/);
-});
-
-test('버전이 semver 가 아니면 거절한다', () => {
-  const change = { agents: { claude: { version: 'v1' } } };
-
-  assert.throws(() => validateConfig(withChange(change)), /agents\.claude\.version/);
-});
-
-test('버전이 문자열이 아니면 거절한다', () => {
-  for (const version of [['1.2.3'], 1, null]) {
-    const change = { agents: { claude: { version } } };
-
-    assert.throws(() => validateConfig(withChange(change)), /agents\.claude\.version/);
+test('에이전트 목록이 비었거나 배열이 아니면 거절한다', () => {
+  for (const agents of [[], { claude: {} }, 'claude', undefined]) {
+    assert.throws(() => validateConfig(withChange({ agents })), /agents/);
   }
+});
+
+test('같은 에이전트가 두 번 있으면 거절한다', () => {
+  assert.throws(() => validateConfig(withChange({ agents: ['claude', 'claude'] })), /claude 가 두 번/);
+});
+
+test('버전은 yy.mm.dd.n 모양의 실제 날짜여야 한다', () => {
+  const invalid = ['1.2.3', 'v26.11.23.0', '26.11.23', '26.13.01.0', '26.02.30.0', '26.11.23.01', '26.1.5.0', 26, null, ['26.11.23.0']];
+
+  for (const version of invalid) {
+    assert.throws(() => validateConfig(withChange({ version })), /version/, String(version));
+  }
+});
+
+test('같은 날의 다음 릴리스는 마지막 칸을 올린다', () => {
+  assert.equal(validateConfig(withChange({ version: '26.01.05.12' })).version, '26.01.05.12');
 });
 
 test('저장소가 owner/repo 모양이 아니면 거절한다', () => {
@@ -78,7 +82,7 @@ test('한 줄이어야 하는 값에 줄바꿈이 있으면 거절한다', () =>
 });
 
 test('문제가 여럿이면 한 번에 모두 알려 준다', () => {
-  const change = { name: '', repository: 'x', agents: { claude: { version: 'bad' } } };
+  const change = { name: '', repository: 'x', version: 'bad' };
 
   assert.throws(
     () => validateConfig(withChange(change)),
@@ -86,7 +90,8 @@ test('문제가 여럿이면 한 번에 모두 알려 준다', () => {
       error instanceof ConfigError &&
       error.problems.length === 3 &&
       /name/.test(error.message) &&
-      /repository/.test(error.message),
+      /repository/.test(error.message) &&
+      /version/.test(error.message),
   );
 });
 
@@ -94,5 +99,5 @@ test('저장소의 설정 파일은 검증을 통과한다', async () => {
   const config = await loadConfig(new URL('../plugin.config.json', import.meta.url));
 
   assert.equal(config.mcp.url, 'https://mcp.tting.ai/mcp');
-  assert.deepEqual(Object.keys(config.agents).sort(), [...AGENTS].sort());
+  assert.deepEqual([...config.agents].sort(), [...AGENTS].sort());
 });

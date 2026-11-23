@@ -12,7 +12,8 @@ const config = validateConfig({
   author: { name: 'tting' },
   repository: 'VMS-Holdings/tting-plugin',
   mcp: { serverName: 'tting', url: 'https://mcp.tting.ai/mcp' },
-  agents: { claude: { version: '0.1.0' }, codex: { version: '0.1.0' } },
+  version: '26.11.23.0',
+  agents: ['claude', 'codex'],
 });
 
 const SKILL = '---\nname: using-tting\ndescription: Use tting.\n---\n\n# Using tting\n';
@@ -40,7 +41,7 @@ test('선언 파일을 쓰고 스킬을 에이전트의 자리에 복사한다',
   const result = await buildAgent({ config, agent: 'claude', skillsDir, outDir: join(root, 'ok', 'dist') });
 
   assert.equal(result.dir, join(root, 'ok', 'dist', 'claude'));
-  assert.equal(result.version, '0.1.0');
+  assert.equal(result.version, '26.11.23.0');
   const manifest = JSON.parse(await readFile(join(result.dir, '.claude-plugin', 'plugin.json'), 'utf8'));
   assert.equal(manifest.name, 'tting');
   assert.equal(await readFile(join(result.dir, 'skills', 'using-tting', 'SKILL.md'), 'utf8'), SKILL);

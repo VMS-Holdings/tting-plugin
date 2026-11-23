@@ -1,6 +1,6 @@
 # tting-plugin
 
-tting 을 코딩 에이전트에 붙이는 플러그인의 원본이다. 원본 하나에서 에이전트별 플러그인을 짓고, 에이전트마다 따로 릴리스한다.
+tting 을 코딩 에이전트에 붙이는 플러그인의 원본이다. 원본 하나에서 에이전트별 플러그인을 짓고, 버전 태그 하나로 함께 릴리스한다. 에이전트는 저마다 자기 묶음을 받아 간다.
 
 플러그인에 담기는 것은 둘이다.
 
@@ -9,18 +9,33 @@ tting 을 코딩 에이전트에 붙이는 플러그인의 원본이다. 원본 
 
 ## 지원하는 에이전트
 
-| 에이전트 | 릴리스 브랜치 | 형식 | 설치 |
+| 에이전트 | 받아 가는 곳 | 형식 | 설치 |
 | --- | --- | --- | --- |
-| Claude Code | `release/claude` | 플러그인. `.claude-plugin/plugin.json`, `.mcp.json`, `skills/` | `claude plugin install tting --marketplace VMS-Holdings/tting-plugin` |
-| Gemini CLI | `release/gemini` | 익스텐션. `gemini-extension.json`, `skills/` | `gemini extensions install https://github.com/VMS-Holdings/tting-plugin --auto-update` |
-| Codex | `release/codex` | 포터블 플러그인과 마켓 선언. `.agents/plugins/marketplace.json`, `plugins/tting/` | `codex plugin marketplace add VMS-Holdings/tting-plugin@release/codex` |
-| Grok Build | `release/grok` | Claude Code 형식 그대로 | `grok --plugin-dir <받은 폴더>` |
+| Claude Code | `release/claude` 브랜치 | 플러그인. `.claude-plugin/plugin.json`, `.mcp.json`, `skills/` | `claude plugin install tting --marketplace VMS-Holdings/tting-plugin` |
+| Gemini CLI | 최신 GitHub Release 의 Gemini 묶음 | 익스텐션. `gemini-extension.json`, `skills/` | `gemini extensions install https://github.com/VMS-Holdings/tting-plugin --auto-update` |
+| Codex | `release/codex` 브랜치 | 포터블 플러그인과 마켓 선언. `.agents/plugins/marketplace.json`, `plugins/tting/` | `codex plugin marketplace add VMS-Holdings/tting-plugin@release/codex` |
+| Grok Build | `release/grok` 브랜치나 릴리스의 Grok 묶음 | Claude Code 형식 그대로 | `grok --plugin-dir <받은 폴더>` |
+
+### 버전과 태그
+
+버전은 릴리스 날짜와 그날의 순번이다. `yy.mm.dd.n` 으로 쓴다. 2026년 11월 23일의 첫 릴리스는 `26.11.23.0` 이고 태그는 `v26.11.23.0` 이다. 같은 날 다시 내면 마지막 칸을 올린다.
+
+태그 하나에 GitHub Release 하나가 붙고, 거기에 에이전트별 묶음이 실린다.
+
+| 묶음 | 받는 쪽 |
+| --- | --- |
+| `tting-plugin-claude-<version>.tar.gz` | Claude Code |
+| `darwin.`, `linux.`, `win32.` 로 시작하는 `tting-plugin-gemini-<version>.tar.gz` 셋 | Gemini CLI. 내용은 같다 |
+| `tting-plugin-codex-<version>.tar.gz` | Codex |
+| `tting-plugin-grok-<version>.tar.gz` | Grok Build |
+
+Gemini 묶음만 셋인 것은 Gemini CLI 가 묶음을 고르는 방식 때문이다. 릴리스에 묶음이 여럿이면 이름이 자기 플랫폼으로 시작하는 것만 고르고, 없으면 태그의 원본을 통째로 받는다. 그래서 macOS, Linux, Windows 가 아닌 곳에서는 이 명령으로 설치되지 않는다. 그런 곳에서는 릴리스 브랜치로 받는다.
 
 Claude Code 는 기본 브랜치의 `.claude-plugin/marketplace.json` 을 읽는다. 그 선언이 플러그인 본체를 `release/claude` 에서 가져오게 한다.
 
-Gemini CLI 는 `--ref` 없이 설치하면 저장소의 "latest" GitHub Release 를 받는다. 그래서 그 표시는 Gemini 릴리스에만 준다. 다른 에이전트의 릴리스는 표시 없이 만든다. 이 방식으로 설치하면 갱신할 때도 되묻지 않는다.
-
 저장소가 비공개인 동안에는 저장소를 읽을 수 있는 사람만 설치할 수 있다. Gemini CLI 는 릴리스를 읽을 토큰이 필요하다. `GITHUB_TOKEN` 을 주거나, SSH 로 릴리스 브랜치를 받는다(`gemini extensions install git@github.com:VMS-Holdings/tting-plugin.git --ref release/gemini --auto-update`). 브랜치로 받으면 설치와 갱신 때마다 git clone 으로 받을지 한 번씩 묻는다.
+
+2026-11-22 에 낸 `claude-v0.1.0` 같은 에이전트별 태그는 이 방식으로 바꾸기 전의 것이다. 지우지 않고 둔다.
 
 ### 형식의 근거와 확인 상태
 
@@ -34,12 +49,12 @@ Gemini CLI 는 `--ref` 없이 설치하면 저장소의 "latest" GitHub Release 
 ## 구조
 
 ```text
-plugin.config.json        이름, 설명, MCP 주소, 에이전트별 버전. 원본은 이 파일 하나다
+plugin.config.json        이름, 설명, MCP 주소, 버전, 에이전트 목록. 원본은 이 파일 하나다
 skills/<이름>/SKILL.md    모든 에이전트가 함께 쓰는 스킬
 scripts/build.mjs         dist/<agent> 에 산출물을 짓는다
-scripts/release.mjs       산출물을 release/<agent> 에 올리고 태그를 단다
+scripts/release.mjs       산출물을 release/<agent> 에 올리고 버전 태그 하나를 단다
 scripts/sync-root.mjs     기본 브랜치의 Claude 마켓 선언을 다시 만든다
-scripts/lib/              설정 검증, 에이전트별 형식, 짓기, 릴리스
+scripts/lib/              설정 검증, 에이전트별 형식, 짓기, 릴리스, 묶음 만들기
 test-support/             테스트가 함께 쓰는 git 도우미
 .github/workflows/        verify (PR 과 main), release (손으로 실행)
 test/                     node:test 로 쓴 테스트
@@ -52,40 +67,41 @@ test/                     node:test 로 쓴 테스트
 - **스킬 폴더에 둘 수 있는 것**: 보통 파일과 폴더뿐이다. 링크와 숨김 파일(`.env` 같은 것)이 있으면 짓기가 실패한다. 그대로 릴리스에 섞여 나가는 것을 막으려는 것이다.
 - **머리말을 쓰는 법**: 짓기는 YAML 을 다 읽지 않는다. `name` 과 `description` 은 한 줄 값, 따옴표로 싼 값, 여러 줄 블록(`>`, `|`) 가운데 하나로 쓴다. 값 뒤에 주석을 달거나 값을 다음 줄에 쓰면 짓기가 실패한다.
 - **설정을 고친다**: `plugin.config.json` 을 고친 뒤 `npm run sync:root` 를 돌린다. 돌리지 않으면 테스트가 어긋남을 잡는다.
-- **에이전트를 더한다**: `scripts/lib/config.mjs` 의 `AGENTS` 와 `scripts/lib/targets.mjs` 에 그 에이전트의 형식을 더한다.
+- **에이전트를 더한다**: `scripts/lib/config.mjs` 의 `AGENTS` 와 `scripts/lib/targets.mjs` 에 그 에이전트의 형식을 더하고, `plugin.config.json` 의 `agents` 에 넣는다.
 
 스킬과 MCP 응답에 싣는 문장은 영어로 쓴다.
 
 ## 릴리스
 
-에이전트마다 버전이 따로다. 한 에이전트만 올려도 된다.
+모든 에이전트가 같은 버전으로 함께 나간다.
 
-1. `plugin.config.json` 의 `agents.<agent>.version` 을 올려 main 에 넣는다.
-2. GitHub Actions 의 `release` 워크플로를 main 에서 실행하고 에이전트를 고른다. `dry_run` 을 켜면 올리지 않고 산출물만 남긴다.
+1. `plugin.config.json` 의 `version` 을 올려 main 에 넣는다.
+2. GitHub Actions 의 `release` 워크플로를 main 에서 실행한다. `dry_run` 을 켜면 올리지 않고 산출물만 남긴다.
 
-로컬에서도 같은 일을 할 수 있다.
+로컬에서도 같은 일을 할 수 있다. GitHub Release 와 묶음 올리기는 워크플로만 한다.
 
 ```bash
-npm run release -- --agent claude          # 무엇이 나갈지만 본다
-npm run release -- --agent claude --push   # 실제로 올린다
-npm run release -- --agent all --push      # 아직 나가지 않은 버전만 올린다
+npm run release             # 무엇이 나갈지만 본다. dist/ 에 묶음과 릴리스 노트가 생긴다
+npm run release -- --push   # 브랜치와 태그를 실제로 올린다
 ```
 
 릴리스 하나가 남기는 것은 셋이다.
 
-- `release/<agent>` 브랜치의 커밋 하나. 브랜치에는 그 에이전트의 산출물만 있다. 커밋 메시지의 `Source:` 줄이 어느 원본 커밋에서 지었는지 알려 준다.
-- `<agent>-v<version>` 태그
-- GitHub Release 와 `tting-plugin-<agent>-<version>.tar.gz` (워크플로로 실행했을 때). "latest" 표시는 Gemini 릴리스만 받는다.
+- 에이전트마다 `release/<agent>` 브랜치의 커밋 하나. 브랜치에는 그 에이전트의 산출물만 있다. 커밋 메시지의 `Source:` 줄이 어느 원본 커밋에서 지었는지 알려 준다.
+- `v<version>` 태그 하나. main 의 원본 커밋을 가리킨다.
+- GitHub Release 하나와 에이전트별 묶음. 릴리스 노트에 에이전트마다 받아 가는 법이 적힌다.
 
 지켜지는 것은 다음과 같다.
 
-- 이미 나간 버전은 다시 낼 수 없다. 버전을 올려야 한다.
+- 브랜치와 태그는 한 번에 올라간다. 하나라도 거절되면 아무것도 올라가지 않는다.
+- 이미 나간 버전은 다른 커밋에서 다시 낼 수 없다. 버전을 올려야 한다.
+- 태그를 손으로 먼저 달면 릴리스가 거절된다. 태그는 릴리스 스크립트만 단다.
 - 원격 main 의 끝에서만 올린다. 올리지 않은 작업 브랜치나 뒤처진 main 에서는 올리지 않는다.
 - 커밋하지 않은 변경이 있으면 올리지 않는다. `skills/` 에 git 이 무시하는 파일이 있어도 올리지 않는다.
 - 미리보기(`--push` 없이)는 어느 커밋에서든 된다. 원격에는 아무것도 올리지 않는다.
 - 릴리스는 작업 중인 브랜치와 작업 트리를 건드리지 않는다.
 - 워크플로는 main 에서만 릴리스한다. 쓰기 권한은 `release` 환경을 쓰는 잡에만 있고, 그 환경은 main 에서만 쓸 수 있다.
-- 저장소 규칙(Settings 의 Rulesets)이 서버에서도 막는다. `<agent>-v<version>` 태그는 옮기거나 지울 수 없고, `release/<agent>` 브랜치는 강제 푸시와 삭제가 안 된다. 잘못 나간 릴리스를 지우려면 관리자가 규칙을 잠시 꺼야 한다.
+- 저장소 규칙(Settings 의 Rulesets)이 서버에서도 막는다. 버전 태그는 옮기거나 지울 수 없고, `release/<agent>` 브랜치는 강제 푸시와 삭제가 안 된다. 잘못 나간 릴리스를 지우려면 관리자가 규칙을 잠시 꺼야 한다.
 
 ### 러너
 
@@ -93,8 +109,8 @@ npm run release -- --agent all --push      # 아직 나가지 않은 버전만 �
 
 ### 도중에 실패했을 때
 
-- 에이전트 하나가 실패하면 그 앞의 에이전트는 이미 나가 있다. 원인을 고친 뒤 `all` 로 다시 실행한다. 나간 버전은 건너뛴다.
-- 태그는 올라갔는데 GitHub Release 가 없으면 워크플로를 `all` 로 다시 실행한다. 빠진 GitHub Release 만 태그에서 다시 만든다.
+- 브랜치와 태그를 올리다 실패하면 원격에는 아무것도 남지 않는다. 원인을 고치고 다시 실행한다.
+- 태그는 올라갔는데 GitHub Release 가 없으면 같은 실행을 다시 돌린다(Re-run). 같은 커밋이면 올리기는 건너뛰고 GitHub Release 만 만든다.
 
 ## 검증
 

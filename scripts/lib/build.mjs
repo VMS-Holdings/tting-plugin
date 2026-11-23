@@ -132,5 +132,5 @@ export async function buildAgent({ config, agent, skillsDir, outDir }) {
   await writeFiles(dir, target.files);
   await copySkillFiles(skillsDir, join(dir, target.skillsDir), skillFiles);
 
-  return { agent, dir, version: config.agents[agent].version, skills };
+  return { agent, dir, version: config.version, skills };
 }

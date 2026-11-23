@@ -2,7 +2,7 @@
 
 Create, run, and inspect tting workflows, agents, and skills from your coding agent.
 
-Version 0.1.2. This branch (`release/gemini`) is generated from
+Version 26.11.23.0. This branch (`release/gemini`) is generated from
 [VMS-Holdings/tting-plugin](https://github.com/VMS-Holdings/tting-plugin). Do not edit it by hand.
 
 ## Install
@@ -11,7 +11,7 @@ Version 0.1.2. This branch (`release/gemini`) is generated from
 gemini extensions install https://github.com/VMS-Holdings/tting-plugin --auto-update
 ```
 
-This installs the latest Gemini release of this repository and keeps it updated.
+This installs the latest release of this repository and keeps it updated.
 
 While the repository is private, Gemini CLI needs a token to read its releases. Set `GITHUB_TOKEN` to a
 token that can read the repository. Or install from the release branch over SSH, and answer yes when

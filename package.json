@@ -2,7 +2,7 @@
   "name": "tting-plugin",
   "private": true,
   "type": "module",
-  "description": "tting 을 코딩 에이전트(Claude Code, Gemini CLI, Codex, Grok Build)에 붙이는 플러그인의 원본과 에이전트별 릴리스 도구",
+  "description": "Source and per-agent release tooling for the tting plugin for coding agents (Claude Code, Gemini CLI, Codex, Grok Build)",
   "engines": {
     "node": ">=20"
   },

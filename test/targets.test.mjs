@@ -109,18 +109,15 @@ test('gemini: 기본 설치 명령은 ref 없이 최신 GitHub Release 를 받�
   const readme = readmeOf('gemini');
 
   assert.match(readme, /gemini extensions install https:\/\/github\.com\/VMS-Holdings\/tting-plugin --auto-update\n/);
-  assert.match(readme, /GITHUB_TOKEN/);
+  assert.doesNotMatch(readme, /GITHUB_TOKEN|private/);
 });
 
-test('gemini 와 grok 의 설치 안내는 SSH 로 받는 명령도 싣는다', () => {
-  assert.ok(
-    readmeOf('gemini').includes(
-      'gemini extensions install git@github.com:VMS-Holdings/tting-plugin.git --ref release/gemini --auto-update',
-    ),
-  );
-  assert.ok(
-    readmeOf('grok').includes('git clone --branch release/grok git@github.com:VMS-Holdings/tting-plugin.git tting-grok'),
-  );
+test('codex and grok install notes carry the commands that install from the release branch', () => {
+  const codex = readmeOf('codex');
+
+  assert.ok(codex.includes('codex plugin marketplace add VMS-Holdings/tting-plugin --ref release/codex'));
+  assert.ok(codex.includes('codex plugin add tting@tting'));
+  assert.ok(readmeOf('grok').includes('grok plugin install VMS-Holdings/tting-plugin@release/grok'));
 });
 
 test('gemini 의 묶음은 Gemini CLI 가 고르도록 플랫폼 이름을 앞에 단다', () => {

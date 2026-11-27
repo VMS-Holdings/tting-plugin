@@ -1,129 +1,280 @@
-# tting-plugin
+# tting plugin for coding agents
 
-tting 을 코딩 에이전트에 붙이는 플러그인의 원본이다. 원본 하나에서 에이전트별 플러그인을 짓고, 버전 태그 하나로 함께 릴리스한다. 에이전트는 저마다 자기 묶음을 받아 간다.
+Use [tting](https://tting.ai) from the coding agent you already work in. Ask your agent to create, edit, run, and inspect tting workflows, agents, and skills, and it does the work in your tting workspace.
 
-플러그인에 담기는 것은 둘이다.
+The plugin adds two things to your agent:
 
-- **원격 MCP 서버 연결**: `https://mcp.tting.ai/mcp`
-- **스킬**: `skills/` 아래의 영어 안내. tting 도구를 어떤 순서로 부르고 언제 사용자에게 물어야 하는지 적는다.
+- **The tting MCP server** (`https://mcp.tting.ai/mcp`). It gives the agent the tting tools. You sign in with your tting account in the browser. No API key is needed.
+- **A skill** (`using-tting`). It tells the agent which tting tools to call in what order, and when to ask you first, for example before a run spends points.
 
-## 지원하는 에이전트
+If you only want the tools, skip the plugin and [add the MCP server by itself](#mcp-server-only-no-plugin).
 
-| 에이전트 | 받아 가는 곳 | 형식 | 설치 |
-| --- | --- | --- | --- |
-| Claude Code | `release/claude` 브랜치 | 플러그인. `.claude-plugin/plugin.json`, `.mcp.json`, `skills/` | `claude plugin install tting --marketplace VMS-Holdings/tting-plugin` |
-| Gemini CLI | 최신 GitHub Release 의 Gemini 묶음 | 익스텐션. `gemini-extension.json`, `skills/` | `gemini extensions install https://github.com/VMS-Holdings/tting-plugin --auto-update` |
-| Codex | `release/codex` 브랜치 | 포터블 플러그인과 마켓 선언. `.agents/plugins/marketplace.json`, `plugins/tting/` | `codex plugin marketplace add VMS-Holdings/tting-plugin@release/codex` |
-| Grok Build | `release/grok` 브랜치나 릴리스의 Grok 묶음 | Claude Code 형식 그대로 | `grok --plugin-dir <받은 폴더>` |
+## Quick install
 
-### 버전과 태그
-
-버전은 릴리스 날짜와 그날의 순번이다. `yy.mm.dd.n` 으로 쓴다. 2026년 11월 23일의 첫 릴리스는 `26.11.23.0` 이고 태그는 `v26.11.23.0` 이다. 같은 날 다시 내면 마지막 칸을 올린다.
-
-태그 하나에 GitHub Release 하나가 붙고, 거기에 에이전트별 묶음이 실린다.
-
-| 묶음 | 받는 쪽 |
+| Agent | Command |
 | --- | --- |
-| `tting-plugin-claude-<version>.tar.gz` | Claude Code |
-| `darwin.`, `linux.`, `win32.` 로 시작하는 `tting-plugin-gemini-<version>.tar.gz` 셋 | Gemini CLI. 내용은 같다 |
-| `tting-plugin-codex-<version>.tar.gz` | Codex |
-| `tting-plugin-grok-<version>.tar.gz` | Grok Build |
+| [Claude Code](#claude-code) | `claude plugin install tting --marketplace VMS-Holdings/tting-plugin` |
+| [Gemini CLI](#gemini-cli) | `gemini extensions install https://github.com/VMS-Holdings/tting-plugin --auto-update` |
+| [Codex](#codex) | `codex plugin marketplace add VMS-Holdings/tting-plugin --ref release/codex`<br>`codex plugin add tting@tting` |
+| [Grok Build](#grok-build) | `grok plugin install VMS-Holdings/tting-plugin@release/grok` |
+| Anything else that speaks MCP | [Add the MCP server only](#mcp-server-only-no-plugin) |
 
-Gemini 묶음만 셋인 것은 Gemini CLI 가 묶음을 고르는 방식 때문이다. 릴리스에 묶음이 여럿이면 이름이 자기 플랫폼으로 시작하는 것만 고르고, 없으면 태그의 원본을 통째로 받는다. 그래서 macOS, Linux, Windows 가 아닌 곳에서는 이 명령으로 설치되지 않는다. 그런 곳에서는 릴리스 브랜치로 받는다.
+After installing, [sign in to tting](#sign-in-to-tting) once and [try a first prompt](#try-it).
 
-Claude Code 는 기본 브랜치의 `.claude-plugin/marketplace.json` 을 읽는다. 그 선언이 플러그인 본체를 `release/claude` 에서 가져오게 한다.
+You need a tting account. Create one at [app.tting.ai](https://app.tting.ai).
 
-저장소가 비공개인 동안에는 저장소를 읽을 수 있는 사람만 설치할 수 있다. Gemini CLI 는 릴리스를 읽을 토큰이 필요하다. `GITHUB_TOKEN` 을 주거나, SSH 로 릴리스 브랜치를 받는다(`gemini extensions install git@github.com:VMS-Holdings/tting-plugin.git --ref release/gemini --auto-update`). 브랜치로 받으면 설치와 갱신 때마다 git clone 으로 받을지 한 번씩 묻는다.
+## Install the plugin
 
-2026-11-22 에 낸 `claude-v0.1.0` 같은 에이전트별 태그는 이 방식으로 바꾸기 전의 것이다. 지우지 않고 둔다.
+The screenshots below show each command and its output with plugin version `26.11.23.0`. Tool versions used: Claude Code 2.1.311, Gemini CLI 0.26.0, Codex CLI 0.172.0, Grok Build 1.0.92.
 
-### 형식의 근거와 확인 상태
+### Claude Code
 
-| 에이전트 | 근거 | 확인 (2026-11-23, `v26.11.23.0`) |
-| --- | --- | --- |
-| Claude Code | [Plugin manifest reference](https://code.claude.com/docs/en/plugins-reference), [Create a marketplace](https://code.claude.com/docs/en/plugin-marketplaces) | `claude plugin validate --strict` 통과 (2.1.311). 표의 명령으로 비공개 저장소에서 설치했고 버전이 `26.11.23.0` 으로 잡힌다. 플러그인의 MCP 서버가 로그인 대기 상태로 잡힌다 |
-| Gemini CLI | [Extension reference](https://geminicli.com/docs/extensions/reference), [MCP servers](https://geminicli.com/docs/tools/mcp-server/) | `gemini extensions validate` 통과 (0.26.0). 버전이 표준 semver 가 아니라는 경고가 나온다. 표의 명령으로 `v26.11.23.0` 릴리스의 `darwin.` 묶음을 받았다(`GITHUB_TOKEN` 을 줬다) |
-| Codex | [Build plugins](https://developers.openai.com/codex/plugins/build) | 문서만 따랐다. Codex 로 설치해 보지 못했다 |
-| Grok Build | [Skills, Plugins, Marketplaces](https://docs.x.ai/build/features/skills-plugins-marketplaces). Claude Code 의 플러그인을 그대로 읽는다고 적혀 있다 | 릴리스의 Grok 묶음을 받아 풀었고 Claude 검증기를 통과한다. `release/grok` 브랜치와 내용이 같다. Grok 으로 설치해 보지 못했다 |
+Run this in your terminal:
 
-## 구조
+```bash
+claude plugin install tting --marketplace VMS-Holdings/tting-plugin
+```
+
+That is short for the two steps below, which you can also run one at a time:
+
+```bash
+claude plugin marketplace add VMS-Holdings/tting-plugin
+claude plugin install tting@tting
+```
+
+Or, inside a Claude Code session:
 
 ```text
-plugin.config.json        이름, 설명, MCP 주소, 버전, 에이전트 목록. 원본은 이 파일 하나다
-skills/<이름>/SKILL.md    모든 에이전트가 함께 쓰는 스킬
-scripts/build.mjs         dist/<agent> 에 산출물을 짓는다
-scripts/release.mjs       산출물을 release/<agent> 에 올리고 버전 태그 하나를 단다
-scripts/sync-root.mjs     기본 브랜치의 Claude 마켓 선언을 다시 만든다
-scripts/lib/              설정 검증, 에이전트별 형식, 짓기, 릴리스, 묶음 만들기
-test-support/             테스트가 함께 쓰는 git 도우미
-.github/workflows/        verify (PR 과 main), release (손으로 실행)
-test/                     node:test 로 쓴 테스트
-.claude-plugin/marketplace.json   생성물. 손으로 고치지 않는다
+/plugin marketplace add VMS-Holdings/tting-plugin
+/plugin install tting@tting
 ```
 
-## 고치는 법
+Check that it worked with `claude plugin list` and `claude mcp list`. The tting server shows `Needs authentication` until you sign in.
 
-- **스킬을 더한다**: `skills/<이름>/SKILL.md` 를 만든다. 머리말의 `name` 은 폴더 이름과 같아야 하고 `description` 이 있어야 한다. 어기면 짓기가 실패한다.
-- **스킬 폴더에 둘 수 있는 것**: 보통 파일과 폴더뿐이다. 링크와 숨김 파일(`.env` 같은 것)이 있으면 짓기가 실패한다. 그대로 릴리스에 섞여 나가는 것을 막으려는 것이다.
-- **머리말을 쓰는 법**: 짓기는 YAML 을 다 읽지 않는다. `name` 과 `description` 은 한 줄 값, 따옴표로 싼 값, 여러 줄 블록(`>`, `|`) 가운데 하나로 쓴다. 값 뒤에 주석을 달거나 값을 다음 줄에 쓰면 짓기가 실패한다.
-- **설정을 고친다**: `plugin.config.json` 을 고친 뒤 `npm run sync:root` 를 돌린다. 돌리지 않으면 테스트가 어긋남을 잡는다.
-- **에이전트를 더한다**: `scripts/lib/config.mjs` 의 `AGENTS` 와 `scripts/lib/targets.mjs` 에 그 에이전트의 형식을 더하고, `plugin.config.json` 의 `agents` 에 넣는다.
+![Claude Code: adding the marketplace, installing the plugin, and listing it](docs/images/claude-code-install.png)
 
-스킬과 MCP 응답에 싣는 문장은 영어로 쓴다.
+To sign in, start `claude`, type `/mcp`, select **tting**, and choose **Authenticate**.
 
-## 릴리스
-
-모든 에이전트가 같은 버전으로 함께 나간다.
-
-1. `plugin.config.json` 의 `version` 을 올려 main 에 넣는다.
-2. GitHub Actions 의 `release` 워크플로를 main 에서 실행한다. `dry_run` 을 켜면 올리지 않고 산출물만 남긴다.
-
-로컬에서도 같은 일을 할 수 있다. GitHub Release 와 묶음 올리기는 워크플로만 한다.
+### Gemini CLI
 
 ```bash
-npm run release             # 무엇이 나갈지만 본다. dist/ 에 묶음과 릴리스 노트가 생긴다
-npm run release -- --push   # 브랜치와 태그를 실제로 올린다
+gemini extensions install https://github.com/VMS-Holdings/tting-plugin --auto-update
 ```
 
-릴리스 하나가 남기는 것은 셋이다.
+Gemini CLI shows a notice about third-party extensions and asks you to confirm. Add `--consent` to accept it up front. `--auto-update` keeps the extension on the latest release.
 
-- 에이전트마다 `release/<agent>` 브랜치의 커밋 하나. 브랜치에는 그 에이전트의 산출물만 있다. 커밋 메시지의 `Source:` 줄이 어느 원본 커밋에서 지었는지 알려 준다.
-- `v<version>` 태그 하나. main 의 원본 커밋을 가리킨다.
-- GitHub Release 하나와 에이전트별 묶음. 릴리스 노트에 에이전트마다 받아 가는 법이 적힌다.
+Check that it worked with `gemini extensions list`. You should see the `tting` MCP server and the `using-tting` skill.
 
-지켜지는 것은 다음과 같다.
+![Gemini CLI: installing the extension and listing it](docs/images/gemini-cli-install.png)
 
-- 브랜치와 태그는 한 번에 올라간다. 하나라도 거절되면 아무것도 올라가지 않는다.
-- 이미 나간 버전은 다른 커밋에서 다시 낼 수 없다. 버전을 올려야 한다.
-- 태그를 손으로 먼저 달면 릴리스가 거절된다. 태그는 릴리스 스크립트만 단다.
-- 원격 main 의 끝에서만 올린다. 올리지 않은 작업 브랜치나 뒤처진 main 에서는 올리지 않는다.
-- 커밋하지 않은 변경이 있으면 올리지 않는다. `skills/` 에 git 이 무시하는 파일이 있어도 올리지 않는다.
-- 미리보기(`--push` 없이)는 어느 커밋에서든 된다. 원격에는 아무것도 올리지 않는다.
-- 릴리스는 작업 중인 브랜치와 작업 트리를 건드리지 않는다.
-- 워크플로는 main 에서만 릴리스한다. 쓰기 권한은 `release` 환경을 쓰는 잡에만 있고, 그 환경은 main 에서만 쓸 수 있다.
-- 저장소 규칙(Settings 의 Rulesets)이 서버에서도 막는다. 버전 태그는 옮기거나 지울 수 없고, `release/<agent>` 브랜치는 강제 푸시와 삭제가 안 된다. 잘못 나간 릴리스를 지우려면 관리자가 규칙을 잠시 꺼야 한다.
+To sign in, start `gemini` and run `/mcp auth tting`.
 
-### 러너
-
-워크플로는 리포 변수 `HOSTED_RUNNERS` 가 `off` 이면 조직의 셀프 호스트 러너에서 돈다. 검증과 테스트는 검사 풀(`vms-arm64-check`), 릴리스는 배포 풀(`vms-arm64-deploy`)을 쓴다. 변수를 지우면 GitHub 호스티드 러너로 돌아간다. tting, tting-cloud 와 같은 스위치다.
-
-### 도중에 실패했을 때
-
-- 브랜치와 태그를 올리다 실패하면 원격에는 아무것도 남지 않는다. 원인을 고치고 다시 실행한다.
-- 태그는 올라갔는데 GitHub Release 가 없으면 같은 실행을 다시 돌린다(Re-run). 같은 커밋이면 올리기는 건너뛰고 GitHub Release 만 만든다.
-
-## 검증
+The install command works on macOS, Linux, and Windows. On other platforms, install from the release branch instead:
 
 ```bash
-npm test
-npm run build
-claude plugin validate --strict dist/claude
-claude plugin validate --strict .
-gemini extensions validate dist/gemini
+gemini extensions install https://github.com/VMS-Holdings/tting-plugin --ref release/gemini --auto-update
 ```
 
-## 아직 확인하지 못한 것
+### Codex
 
-- Codex 와 Grok Build 에서 실제로 설치되는지.
-- 네 에이전트에서 tting 로그인(OAuth)까지 끝나는지.
-- Anthropic 디렉터리에 올리려면 LICENSE 와 아이콘, 개인정보처리방침 주소가 더 필요하다. `claude plugin validate` 가 알려 준다.
+```bash
+codex plugin marketplace add VMS-Holdings/tting-plugin --ref release/codex
+codex plugin add tting@tting
+```
+
+You can also install it from the plugin browser: run the first command, start `codex`, type `/plugins`, and install **tting**.
+
+Check that it worked with `codex plugin list` and `codex mcp list`. The tting server shows `Not logged in` until you sign in.
+
+![Codex: adding the marketplace, installing the plugin, and listing it](docs/images/codex-install.png)
+
+To sign in, run:
+
+```bash
+codex mcp login tting
+```
+
+Start a new Codex session after installing so it picks up the skill and the tools.
+
+### Grok Build
+
+```bash
+grok plugin install VMS-Holdings/tting-plugin@release/grok
+```
+
+Grok asks whether you trust the plugin. Add `--trust` to accept it up front.
+
+Check that it worked with `grok plugin list`. `grok inspect` also shows the `using-tting` skill and the `tting` MCP server that came with the plugin.
+
+![Grok Build: installing the plugin and inspecting it](docs/images/grok-build-install.png)
+
+To sign in, start `grok`, type `/mcps`, select **tting**, and press `i` to authenticate. Grok also starts the browser sign-in the first time a tting tool is used.
+
+To try the plugin for one session without installing it:
+
+```bash
+git clone --branch release/grok https://github.com/VMS-Holdings/tting-plugin.git tting-grok
+grok --plugin-dir ./tting-grok
+```
+
+## MCP server only (no plugin)
+
+The plugin is optional. Any MCP client that supports remote servers can connect to tting directly. You get every tting tool, but not the `using-tting` skill.
+
+| Setting | Value |
+| --- | --- |
+| Server URL | `https://mcp.tting.ai/mcp` |
+| Transport | Streamable HTTP |
+| Authentication | OAuth 2.1 in the browser. Clients register themselves, so you do not need a client ID, secret, or API key. |
+
+### Claude Code
+
+```bash
+claude mcp add --transport http --scope user tting https://mcp.tting.ai/mcp
+```
+
+`--scope user` makes the server available in every project. Leave it out to add the server to the current project only. Then start `claude`, type `/mcp`, select **tting**, and choose **Authenticate**.
+
+![Claude Code: adding the tting MCP server](docs/images/mcp-only-claude-code.png)
+
+### Gemini CLI
+
+```bash
+gemini mcp add --transport http --scope user tting https://mcp.tting.ai/mcp
+```
+
+Then start `gemini` and run `/mcp auth tting`. The command writes this to `~/.gemini/settings.json`, which you can also edit by hand:
+
+```json
+{
+  "mcpServers": {
+    "tting": {
+      "url": "https://mcp.tting.ai/mcp",
+      "type": "http"
+    }
+  }
+}
+```
+
+![Gemini CLI: adding the tting MCP server](docs/images/mcp-only-gemini-cli.png)
+
+### Codex
+
+```bash
+codex mcp add tting --url https://mcp.tting.ai/mcp
+```
+
+Codex detects OAuth and opens the browser sign-in right away. To sign in again later, run `codex mcp login tting`. The command writes this to `~/.codex/config.toml`:
+
+```toml
+[mcp_servers.tting]
+url = "https://mcp.tting.ai/mcp"
+```
+
+![Codex: adding the tting MCP server](docs/images/mcp-only-codex.png)
+
+### Grok Build
+
+```bash
+grok mcp add --transport http tting https://mcp.tting.ai/mcp
+```
+
+Then start `grok`, type `/mcps`, select **tting**, and press `i` to authenticate. The command writes this to `~/.grok/config.toml`:
+
+```toml
+[mcp_servers.tting]
+url = "https://mcp.tting.ai/mcp"
+enabled = true
+```
+
+![Grok Build: adding the tting MCP server](docs/images/mcp-only-grok-build.png)
+
+### Other clients
+
+The steps below follow each client's own documentation. We have not run them ourselves. If a client changes its menus, its documentation wins.
+
+**Claude (claude.ai and Claude Desktop).** Open **Customize > Connectors**, click **+ Add**, then **Add custom connector**. Enter a name and the server URL, click **Continue**, keep the default sign-in options, and click **Add**. On Team and Enterprise plans an owner adds the connector first under **Organization settings > Connectors**. See [Getting started with custom connectors](https://support.claude.com/en/articles/11175166-getting-started-with-custom-connectors-using-remote-mcp).
+
+**ChatGPT.** Go to [chatgpt.com/plugins](https://chatgpt.com/plugins), select the plus button, then **Add custom MCP server**. Enter a name and the server URL, choose **OAuth** for authentication, and create it. Install it before you use it in a conversation. See [Developer mode](https://developers.openai.com/api/docs/guides/developer-mode).
+
+**Cursor.** Add this to `~/.cursor/mcp.json` (all projects) or `.cursor/mcp.json` (one project). See [Cursor MCP docs](https://cursor.com/docs/context/mcp).
+
+```json
+{
+  "mcpServers": {
+    "tting": {
+      "url": "https://mcp.tting.ai/mcp"
+    }
+  }
+}
+```
+
+**VS Code.** Run **MCP: Add Server** from the Command Palette, choose **HTTP (HTTP or Server-Sent Events)**, and enter the server URL. See [Use MCP servers in VS Code](https://code.visualstudio.com/docs/copilot/customization/mcp-servers).
+
+**Any other client.** Look for "remote MCP server", "custom connector", or "streamable HTTP" in its settings and enter the server URL. If the client asks for an authentication type, choose OAuth.
+
+## Sign in to tting
+
+The first time your agent connects, it opens the tting sign-in page in your browser. Sign in, approve the access request, and return to your agent. The connection is bound to one tting workspace.
+
+![The tting sign-in page that opens in the browser](docs/images/tting-sign-in.png)
+
+The agent asks for three permissions: read your workspace (`mcp:read`), create and edit workflows, agents, and skills (`mcp:write`), and run them (`mcp:run`).
+
+## Try it
+
+Ask your agent in plain language. For example:
+
+- "Check my tting connection and tell me which workspace I'm in."
+- "List my tting workflows."
+- "Create a tting workflow that summarizes a URL I give it, and show me the draft before you save it."
+- "Run the workflow named Daily digest and show me the result."
+
+Running workflows and agent tests spends your workspace's points. With the plugin installed, the agent tells you before it spends them.
+
+## What the agent can do
+
+| Area | Tools |
+| --- | --- |
+| Connection | `whoami` |
+| Workflows | `get_workflow_spec`, `list_workflows`, `get_workflow`, `create_workflow`, `save_workflow_draft`, `run_workflow`, `get_workflow_run`, `get_workflow_run_task` |
+| Agents | `list_agents`, `get_agent`, `create_agent`, `update_agent`, `list_agent_versions`, `get_agent_version`, `restore_agent_version`, `estimate_agent_test_run`, `start_agent_test_run` |
+| Skills | `list_skills`, `get_skill`, `create_skill`, `update_skill` |
+
+The server may offer more tools than this table lists. Your client shows the full list after you sign in.
+
+## Update and uninstall
+
+| Agent | Update | Uninstall |
+| --- | --- | --- |
+| Claude Code | `claude plugin update tting@tting` | `claude plugin uninstall tting@tting`<br>`claude plugin marketplace remove tting` |
+| Gemini CLI | `gemini extensions update tting` | `gemini extensions uninstall tting` |
+| Codex | `codex plugin marketplace upgrade tting` | `codex plugin remove tting@tting`<br>`codex plugin marketplace remove tting` |
+| Grok Build | `grok plugin update tting` | `grok plugin uninstall tting` |
+
+If you added the MCP server only, remove it with your client's own command, for example `claude mcp remove tting`.
+
+## Troubleshooting
+
+- **The server shows "Needs authentication", "Not logged in", or "Disconnected".** That is the state before sign-in. Follow the sign-in step for your agent above.
+- **The browser did not open.** Copy the authorization URL your agent prints and open it yourself. In Codex, `codex mcp login tting` prints it again.
+- **`AI_CONSENT_REQUIRED`.** AI processing is turned off for your account. Turn it on in tting Settings.
+- **`POINT_BALANCE_EXHAUSTED`.** The workspace is out of points. Retrying will not help until points are added.
+- **The tools are there but the agent uses them badly.** You probably added the MCP server without the plugin. Install the plugin to get the `using-tting` skill.
+
+Found a problem with the plugin? [Open an issue](https://github.com/VMS-Holdings/tting-plugin/issues).
+
+## How this repository works
+
+One source builds a plugin for every agent, and all of them are released together under one version.
+
+| Agent | Installs from | Format |
+| --- | --- | --- |
+| Claude Code | `release/claude` branch, through the marketplace file on `main` | Plugin: `.claude-plugin/plugin.json`, `.mcp.json`, `skills/` |
+| Gemini CLI | The Gemini bundle of the latest GitHub Release | Extension: `gemini-extension.json`, `skills/` |
+| Codex | `release/codex` branch | Marketplace and portable plugin: `.agents/plugins/marketplace.json`, `plugins/tting/` |
+| Grok Build | `release/grok` branch | Same format as Claude Code |
+
+Versions are the release date plus a counter for that day, written `yy.mm.dd.n`. The first release on 23 November 2026 is `26.11.23.0`, tagged `v26.11.23.0`.
+
+To change the plugin or add a skill, read [CONTRIBUTING.md](CONTRIBUTING.md). Maintainers release with [docs/RELEASING.md](docs/RELEASING.md).

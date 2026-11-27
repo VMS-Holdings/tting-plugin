@@ -1,8 +1,6 @@
 // 에이전트마다 릴리스 브랜치에 놓일 파일을 만든다. 형식의 근거는 README 의 「형식의 근거와 확인 상태」 표에 있다.
 
 const GITHUB = 'https://github.com';
-const GITHUB_SSH = 'git@github.com:';
-const SSH_NOTE = 'If you reach GitHub over SSH, use the SSH address instead:';
 const PORTABLE_PLUGIN_SCHEMA = 'https://agent-plugins.org/schemas/1.0.0/plugin.schema.json';
 const PORTABLE_MCP_SCHEMA = 'https://agent-plugins.org/schemas/1.0.0/mcp.schema.json';
 const CODEX_CATEGORY = 'Productivity';
@@ -38,10 +36,6 @@ export function assetNames(agent, version) {
 
 function repositoryUrl(config) {
   return `${GITHUB}/${config.repository}`;
-}
-
-function repositorySshUrl(config) {
-  return `${GITHUB_SSH}${config.repository}.git`;
 }
 
 function codeBlock(...commands) {
@@ -117,13 +111,11 @@ function grokTarget(config) {
   return {
     skillsDir: 'skills',
     install: [
-      'Grok Build reads Claude Code plugins. Download this branch and point Grok at it:',
+      ...codeBlock(`grok plugin install ${config.repository}@${branch}`),
+      '',
+      'Grok Build reads Claude Code plugins, so you can also load a downloaded copy for one session:',
       '',
       ...codeBlock(`git clone --branch ${branch} ${repositoryUrl(config)}.git ${folder}`, `grok --plugin-dir ./${folder}`),
-      '',
-      SSH_NOTE,
-      '',
-      ...codeBlock(`git clone --branch ${branch} ${repositorySshUrl(config)} ${folder}`),
       '',
       `Or download \`${bundle}\` from the \`${releaseTag(config.version)}\` release and unpack it into a folder.`,
     ],
@@ -147,14 +139,6 @@ function geminiTarget(config) {
       ...codeBlock(`gemini extensions install ${repositoryUrl(config)} --auto-update`),
       '',
       'This installs the latest release of this repository and keeps it updated.',
-      '',
-      'While the repository is private, Gemini CLI needs a token to read its releases. Set `GITHUB_TOKEN` to a',
-      'token that can read the repository. Or install from the release branch over SSH, and answer yes when',
-      'Gemini CLI offers to use git clone:',
-      '',
-      ...codeBlock(
-        `gemini extensions install ${repositorySshUrl(config)} --ref ${releaseBranch('gemini')} --auto-update`,
-      ),
     ],
     files: [{ path: 'gemini-extension.json', content: toJson(extension) }],
   };
@@ -180,9 +164,11 @@ function codexTarget(config) {
   return {
     skillsDir: `${pluginDir}/skills`,
     install: [
-      ...codeBlock(`codex plugin marketplace add ${config.repository}@${releaseBranch('codex')}`),
+      ...codeBlock(`codex plugin marketplace add ${config.repository} --ref ${releaseBranch('codex')}`),
       '',
-      `Then open \`/plugins\` in Codex and install \`${config.name}\`.`,
+      'Then install the plugin, or open `/plugins` in Codex and install it from there:',
+      '',
+      ...codeBlock(`codex plugin add ${config.name}@${config.name}`),
     ],
     files: [
       { path: '.agents/plugins/marketplace.json', content: toJson(marketplace) },
